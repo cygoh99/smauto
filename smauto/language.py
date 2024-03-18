@@ -1,9 +1,11 @@
 import os
+import sys
 from os.path import join
 from textx import (
     language,
     metamodel_from_file,
     get_children_of_type,
+    TextXSyntaxError,
     TextXSemanticError,
     get_location,
 )
@@ -217,10 +219,26 @@ def get_metamodel(debug: bool = False, global_repo: bool = False):
 
 
 def build_model(model_path):
-    mm = get_metamodel(debug=False)
-    model = mm.model_from_file(model_path)
-    # entities = get_children_of_type('Entity', model)
-    return model
+    try:
+        mm = get_metamodel(debug=False)
+        model = mm.model_from_file(model_path)
+        return model
+    except TextXSyntaxError as e:
+        # Create a simplified error message
+        simple_error_msg = f"Syntax error in '{model_path}':\n" \
+                           f"Line {e.line}, Column {e.col}. " \
+                           f"Problem: {e.message}\n"
+        # Highlight the error line
+        with open(model_path, 'r') as file:
+            lines = file.readlines()
+            error_line = lines[e.line - 1].strip()
+            highlight = f"Error Line: {error_line}\n" \
+                        f"{' ' * (len('Error Line: ') + e.col - 1)}^-- Here"
+
+        full_error_msg = simple_error_msg + highlight
+        print(full_error_msg)
+        
+        sys.exit(1)
 
 
 def get_model_grammar(model_path):
